@@ -1,0 +1,25 @@
+/*for (int i = 0; i < 8; ++i) {
+    for (int j = 0; j < 8; ++j) {
+        SetConsoleTextAttribute(console_color, 25);            
+        board[i][j] = '0';
+        cout << board[i][j];
+    }
+    cout << endl;
+}
+*/
+
+
+/*
+// console color explorer
+for (int P = 0; P < 256; P++) {
+  
+    // P is color code of the
+    // corresponding color
+    SetConsoleTextAttribute(
+        console_color, P);
+  
+    // Print Statement
+    cout << P << " Hello Geeks, "
+            << "good night!!!";
+}
+*/
