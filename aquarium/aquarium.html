@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Aquarium</title>
+    <style>
+        html, body {
+            margin: 0;            
+            height: 100%;
+            background-image: url("ribka.jpg");        
+            background-size: cover;
+            background-repeat: no-repeat;
+            background-attachment:fixed;
+        }
+        #container {
+            margin: 0;            
+            height: 400% !important;
+            width: 400% !important;            
+            overflow: hidden;            
+            display:block;
+        }
+        .fish {
+            position: absolute;
+            width: 60px;
+            height: 45px;           
+            background-image: url("fishes3.png");
+            background-size: 300% 400%;
+            background-position: 0% 0%;        
+        }
+        .fish.type1 { background-position: -100% 0%; }
+        .fish.type2 { background-position: -200% 0%; }
+        .fish.type3 { background-position: 0% -100%; }
+        .fish.type4 { background-position: -100% -100%; }
+        .fish.type5 { background-position: -200% -100%; }
+        .fish.type6 { background-position: 0% -200%; }
+        .fish.type7 { background-position: -100% -200%; }
+        .fish.type8 { background-position: -200% -200%; }
+        .fish.type9 { background-position: 0% -300%; }     
+        
+    </style>    
+</head>
+<body>
+    <div id="container"> &nbsp;  
+    <script>
+
+        var mx= 0;//x position of mouse on last click event
+        var my= 0;//y position of mouse on last click event
+        var tappedMotionWindow= 0;
+        var fishTankElement= document.getElementById("container");
+        
+        function getVisibleWindowRect() {
+            return {
+                left: window.scrollX, top: window.scrollY,
+                width: document.body.offsetWidth, height: document.body.offsetHeight
+            };
+        }
+
+        function fishtankWidth () {            
+            return fishTankElement.clientWidth;
+        }
+
+        function fishtankHeight () {
+            return fishTankElement.clientHeight;
+        }
+        function calcDist(x1, y1, x2, y2){
+            let dx= x2-x1;
+            let dy= y2-y1;
+            return Math.sqrt(dx*dx + dy*dy);
+        }
+
+        function generateRandomScreenPos(){
+            let scrollRect = getVisibleWindowRect();
+            scrollRect.left/=fishtankWidth();
+            scrollRect.width/=fishtankWidth();
+            scrollRect.top/=fishtankHeight();
+            scrollRect.height/=fishtankHeight();
+            let newX = Math.random()*scrollRect.width + scrollRect.left;
+            let newY = Math.random()*scrollRect.height + scrollRect.top;
+            return { x: newX, y: newY };
+        }
+
+        function setFishTarget(fish, targetx, targety, timeToReach){            
+            fish.target.x= targetx;
+            fish.target.y= targety;
+            fish.vx= (targetx-fish.x)/timeToReach;
+            fish.vy= (targety-fish.y)/timeToReach;
+            //set clock for choosing a new random target
+            fish.clock= 2.0+Math.random()-0.5;
+        }
+
+        function updateFish (fish, dt) {
+            let fishDiv= fish.el;
+            //update the fish velocity
+            let xold= fish.x;
+            let yold= fish.y;
+            if(xold< 0.0 || xold > 1.0) {
+                fish["vx"]= - fish["vx"]; //change of velocity direction
+            }
+            if(yold< 0.0 || yold > 1.0) {
+                fish["vy"]= - fish["vy"]; //change of velocity direction
+            }
+            fish.x = Math.max(0, Math.min(fish.x, 1));
+            fish.y = Math.max(0, Math.min(fish.y, 1));
+            //update fish clock - keeps track of time to reach current target
+            if(fish.clock<= 0.0)
+            {
+                //choose new random target for fish
+                let newFishPos= generateRandomScreenPos();
+                setFishTarget(fish, newFishPos.x, newFishPos.y, 5.0);
+            }
+            fish.clock-= dt;
+
+            let distToTarget= calcDist(fish.x, fish.y, fish.target.x, fish.target.y);
+            var boundRadius= 0.005;
+            if(distToTarget< boundRadius){
+                fish.vx = Math.max(0.2*fish.vx, 1e-7);
+                fish.vy = Math.max(0.2*fish.vy, 1e-7);
+            }
+
+            //update the fish position
+            fish["x"]= xold + fish["vx"]*dt;
+            fish["y"]= yold + fish["vy"]*dt;
+
+            let dx = fish.x - xold;
+            let dy = fish.y - yold;
+            let fishAngle = Math.atan2(dy, dx);
+            let fishFlipDir = Math.sign(dx);
+
+            //convert 0-1 coords to screen coords
+            let xscreen= fish.x*fishtankWidth()-fishDiv.clientWidth*0.5;
+            let yscreen= fish.y*fishtankHeight()-fishDiv.clientHeight*0.5;
+            fishDiv.setAttribute("style", "left:"+ xscreen +"px; top:"+ yscreen +"px; transform: rotate(" + fishAngle + "rad) scaleX(-1) scaleY(" + fishFlipDir + ");");
+        }
+
+        function createFish (x, y, fishType) {
+            let newDiv= document.createElement("div");
+            fishTankElement.appendChild(newDiv);
+            newDiv.classList.add("fish");
+            newDiv.classList.add(fishType);
+            //obj which contains all the info for a fish
+            let fishObj= { 
+                "el": newDiv, "x": x, "y": y
+                , "vx": 0.0, "vy": 0.0
+                , "target": {x: 0.0, y: 0.0} 
+                , "clock": 0.0
+            };
+            updateFish(fishObj, 0);
+            return fishObj;
+        }
+        
+        //aquarium simulation
+        var fishes = [];
+
+        for (let i=0; i<10; ++i) {
+            let fishPos= generateRandomScreenPos();
+            let newFish = createFish(fishPos.x, fishPos.y, "type"+i);
+            fishes.push(newFish);
+        }
+
+        var fps= 60.0;//frames per second
+        var dt= 1.0/fps;//s
+        var dtms= dt*1000;//ms
+        const maxVel= 0.001/dt;
+        setInterval(function(){
+            for (let i=0; i<fishes.length; ++i) {
+                let fish= fishes[i];
+                updateFish(fish, dt);
+            }
+        }, dtms);
+
+        window.addEventListener("click", function(eventArgs) {
+
+            let scrollRect = getVisibleWindowRect();
+
+            mx= (eventArgs.clientX + scrollRect.left)/fishtankWidth();
+            my= (eventArgs.clientY + scrollRect.top) /fishtankHeight();
+            for (let i= 0; i< fishes.length; ++i) {
+                let fish= fishes[i];
+                setFishTarget(fish, mx, my, 1.0);
+            }
+        });           
+    </script>
+    </div>
+</body>
+</html>
